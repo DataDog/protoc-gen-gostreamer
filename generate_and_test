@@ -12,8 +12,8 @@ protoc foo.proto --plugin=protoc-gen-gostreamer=$plugin_path  --gostreamer_out=o
 popd
 
 
-ls ./example/output/github.com/leeavital/protoc-gen-gostreamer/example/pb
+ls ./example/output/github.com/DataDog/protoc-gen-gostreamer/example/pb
 rm -rf ./example/pb/
-mv ./example/output/github.com/leeavital/protoc-gen-gostreamer/example/pb ./example
+mv ./example/output/github.com/DataDog/protoc-gen-gostreamer/example/pb ./example
 go build ./example/pb/...
 go test ./...
