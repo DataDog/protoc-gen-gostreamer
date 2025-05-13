@@ -1,4 +1,4 @@
-module github.com/leeavital/protoc-gen-gostreamer
+module github.com/DataDog/protoc-gen-gostreamer
 
 go 1.20
 
