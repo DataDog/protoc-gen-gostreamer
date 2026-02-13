@@ -1,10 +1,10 @@
 module github.com/DataDog/protoc-gen-gostreamer
 
-go 1.20
+go 1.23
 
 require (
-	github.com/golang/protobuf v1.5.0
-	google.golang.org/protobuf v1.30.0
+	github.com/golang/protobuf v1.5.4
+	google.golang.org/protobuf v1.36.11
 )
 
 require (
