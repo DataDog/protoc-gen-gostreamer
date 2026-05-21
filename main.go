@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
+	"path"
+	"strings"
+
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/types/descriptorpb"
-	"path"
-	"strings"
 )
 
 func main() {
@@ -119,29 +120,46 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 		case descriptorpb.FieldDescriptorProto_TYPE_BOOL:
 			fieldTag := fmt.Sprintf("0x%x", (*field.Number<<3)|0)
 			funcName := getSetterName(field)
+			isRepeated := field.Label != nil && *field.Label == descriptorpb.FieldDescriptorProto_LABEL_REPEATED
+
 			outFile.P(funcPrefix, " ", funcName, "(v bool) {")
-			outFile.P("if v {")
+			if !isRepeated {
+				outFile.P("if !v {")
+				outFile.P("return")
+				outFile.P("}")
+			}
 			outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch[:0], ", fieldTag, ")")
 			outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch, 1)")
 			outFile.P("x.writer.Write(x.scratch)")
-			outFile.P("}") // end if
 			outFile.P("}")
 
 		case descriptorpb.FieldDescriptorProto_TYPE_ENUM:
 			fieldTag := fmt.Sprintf("0x%x", (*field.Number<<3)|0)
 			funcName := getSetterName(field)
+			isRepeated := field.Label != nil && *field.Label == descriptorpb.FieldDescriptorProto_LABEL_REPEATED
+
 			outFile.P(funcPrefix, funcName, "(v uint64) {")
-			outFile.P("if v != 0 {")
+			if !isRepeated {
+				outFile.P("if v == 0 {")
+				outFile.P("return")
+				outFile.P("}")
+			}
 			outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch[:0], ", fieldTag, ")")
 			outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch, v)")
 			outFile.P("x.writer.Write(x.scratch)")
-			outFile.P("}") // end if
 			outFile.P("}")
 
 		case descriptorpb.FieldDescriptorProto_TYPE_STRING:
 			fieldTag := fmt.Sprintf("0x%x", (*field.Number<<3)|2)
 			funcName := getSetterName(field)
+			isRepeated := field.Label != nil && *field.Label == descriptorpb.FieldDescriptorProto_LABEL_REPEATED
+
 			outFile.P(funcPrefix, funcName, "(v string) {")
+			if !isRepeated {
+				outFile.P(`if v == "" {`)
+				outFile.P("return")
+				outFile.P("}")
+			}
 			outFile.P("x.scratch = x.scratch[:0]")
 			outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch, ", fieldTag, ")")
 			outFile.P("x.scratch = ", outFile.SymAppendString(), "(x.scratch, v)")
@@ -169,10 +187,16 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 		case descriptorpb.FieldDescriptorProto_TYPE_BYTES:
 			fieldTag := fmt.Sprintf("0x%x", (*field.Number<<3)|2)
 			funcName := getSetterName(field)
+			isRepeated := field.Label != nil && *field.Label == descriptorpb.FieldDescriptorProto_LABEL_REPEATED
 
 			outFile.P(funcPrefix, funcName, "(cb func(b *bytes.Buffer)) {")
 			outFile.P("x.buf.Reset()")
 			outFile.P("cb(&x.buf)")
+			if !isRepeated {
+				outFile.P("if x.buf.Len() == 0 {")
+				outFile.P("return")
+				outFile.P("}")
+			}
 			outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch[:0], ", fieldTag, ")")
 			outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch, uint64(x.buf.Len()))")
 			outFile.P("x.writer.Write(x.scratch)")
@@ -197,6 +221,7 @@ func handleVarintField(outFile *FileContext, builderTypeName string, field *desc
 	fieldTag := fmt.Sprintf("0x%x", (uint32(*field.Number)<<3)|uint32(0))
 	funcName := getSetterName(field)
 	funcPrefix := "func(x *" + builderTypeName + ") "
+	isRepeated := field.Label != nil && *field.Label == descriptorpb.FieldDescriptorProto_LABEL_REPEATED
 
 	var argType string
 	switch *field.Type {
@@ -211,6 +236,11 @@ func handleVarintField(outFile *FileContext, builderTypeName string, field *desc
 	}
 
 	outFile.P(funcPrefix, funcName, "(v ", argType, " ) {")
+	if !isRepeated {
+		outFile.P("if v == 0 {")
+		outFile.P("return")
+		outFile.P("}")
+	}
 	outFile.P("x.scratch = x.scratch[:0]")
 	outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch, ", fieldTag, ")")
 	outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch, uint64(v))")
@@ -255,8 +285,14 @@ func handleFixed64(outFile *FileContext, builderTypeName string, field *descript
 	fieldTag := fmt.Sprintf("0x%x", (uint32(*field.Number)<<3)|uint32(wireType))
 	funcName := getSetterName(field)
 	funcPrefix := "func(x *" + builderTypeName + ") "
+	isRepeated := field.Label != nil && *field.Label == descriptorpb.FieldDescriptorProto_LABEL_REPEATED
 
 	outFile.P(funcPrefix, funcName, "(v ", argType, " ) {")
+	if !isRepeated {
+		outFile.P("if v == 0 {")
+		outFile.P("return")
+		outFile.P("}")
+	}
 	outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch[:0], ", fieldTag, ")")
 	outFile.P("x.scratch = ", appender, "(x.scratch, ", uint64Convert, "(v))")
 	outFile.P("x.writer.Write(x.scratch)")
@@ -267,6 +303,7 @@ func handleSigned(outFile *FileContext, builderTypeName string, field *descripto
 	fieldTag := fmt.Sprintf("0x%x", (uint32(*field.Number)<<3)|uint32(protowire.VarintType))
 	funcName := getSetterName(field)
 	funcPrefix := "func(x *" + builderTypeName + ") "
+	isRepeated := field.Label != nil && *field.Label == descriptorpb.FieldDescriptorProto_LABEL_REPEATED
 
 	outFile.SymAppendVarint()
 
@@ -281,6 +318,11 @@ func handleSigned(outFile *FileContext, builderTypeName string, field *descripto
 	}
 
 	outFile.P(funcPrefix, funcName, "(v ", argType, " ) {")
+	if !isRepeated {
+		outFile.P("if v == 0 {")
+		outFile.P("return")
+		outFile.P("}")
+	}
 	outFile.P("x.scratch = x.scratch[:0]")
 	outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch, ", fieldTag, ")")
 	outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch, ", outFile.SymEncodeZigZag(), "(int64(v)))")
