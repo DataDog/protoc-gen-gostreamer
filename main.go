@@ -122,6 +122,7 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 			funcName := getSetterName(field)
 			isRepeated := field.Label != nil && *field.Label == descriptorpb.FieldDescriptorProto_LABEL_REPEATED
 
+			checkDeprecated(outFile, field)
 			outFile.P(funcPrefix, " ", funcName, "(v bool) {")
 			if !isRepeated {
 				outFile.P("if !v {")
@@ -138,6 +139,7 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 			funcName := getSetterName(field)
 			isRepeated := field.Label != nil && *field.Label == descriptorpb.FieldDescriptorProto_LABEL_REPEATED
 
+			checkDeprecated(outFile, field)
 			outFile.P(funcPrefix, funcName, "(v uint64) {")
 			if !isRepeated {
 				outFile.P("if v == 0 {")
@@ -154,6 +156,7 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 			funcName := getSetterName(field)
 			isRepeated := field.Label != nil && *field.Label == descriptorpb.FieldDescriptorProto_LABEL_REPEATED
 
+			checkDeprecated(outFile, field)
 			outFile.P(funcPrefix, funcName, "(v string) {")
 			if !isRepeated {
 				outFile.P(`if v == "" {`)
@@ -173,6 +176,8 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 			subType := getTypeName(outFile, field)
 			subWriter := lowerCaseFirstLetter(subType + "Builder")
 			subWriterType := capitalizeFirstLetter(subType + "Builder")
+
+			checkDeprecated(outFile, field)
 			outFile.P(funcPrefix, funcName+"(cb func(w *"+subWriterType, ")) {")
 			outFile.P("x.buf.Reset()")
 			outFile.P("x.", subWriter, ".writer = &x.buf")
@@ -189,6 +194,7 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 			funcName := getSetterName(field)
 			isRepeated := field.Label != nil && *field.Label == descriptorpb.FieldDescriptorProto_LABEL_REPEATED
 
+			checkDeprecated(outFile, field)
 			outFile.P(funcPrefix, funcName, "(cb func(b *bytes.Buffer)) {")
 			outFile.P("x.buf.Reset()")
 			outFile.P("cb(&x.buf)")
@@ -217,6 +223,12 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 	return nil
 }
 
+func checkDeprecated(outFile *FileContext, field *descriptorpb.FieldDescriptorProto) {
+	if field.Options != nil && field.Options.Deprecated != nil && *field.Options.Deprecated {
+		outFile.P("// Deprecated: do not use")
+	}
+}
+
 func handleVarintField(outFile *FileContext, builderTypeName string, field *descriptorpb.FieldDescriptorProto) {
 	fieldTag := fmt.Sprintf("0x%x", (uint32(*field.Number)<<3)|uint32(0))
 	funcName := getSetterName(field)
@@ -235,6 +247,7 @@ func handleVarintField(outFile *FileContext, builderTypeName string, field *desc
 		argType = "uint64"
 	}
 
+	checkDeprecated(outFile, field)
 	outFile.P(funcPrefix, funcName, "(v ", argType, " ) {")
 	if !isRepeated {
 		outFile.P("if v == 0 {")
@@ -287,6 +300,7 @@ func handleFixed64(outFile *FileContext, builderTypeName string, field *descript
 	funcPrefix := "func(x *" + builderTypeName + ") "
 	isRepeated := field.Label != nil && *field.Label == descriptorpb.FieldDescriptorProto_LABEL_REPEATED
 
+	checkDeprecated(outFile, field)
 	outFile.P(funcPrefix, funcName, "(v ", argType, " ) {")
 	if !isRepeated {
 		outFile.P("if v == 0 {")
@@ -317,6 +331,7 @@ func handleSigned(outFile *FileContext, builderTypeName string, field *descripto
 		panic("here " + (*field).Type.String())
 	}
 
+	checkDeprecated(outFile, field)
 	outFile.P(funcPrefix, funcName, "(v ", argType, " ) {")
 	if !isRepeated {
 		outFile.P("if v == 0 {")
