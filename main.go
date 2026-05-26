@@ -121,10 +121,11 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 			fieldTag := fmt.Sprintf("0x%x", (*field.Number<<3)|0)
 			funcName := getSetterName(field)
 			isRepeated := field.Label != nil && *field.Label == descriptorpb.FieldDescriptorProto_LABEL_REPEATED
+			isOneOf := field.OneofIndex != nil
 
 			checkDeprecated(outFile, field)
 			outFile.P(funcPrefix, " ", funcName, "(v bool) {")
-			if !isRepeated {
+			if !isRepeated && !isOneOf {
 				outFile.P("if !v {")
 				outFile.P("return")
 				outFile.P("}")
@@ -138,10 +139,11 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 			fieldTag := fmt.Sprintf("0x%x", (*field.Number<<3)|0)
 			funcName := getSetterName(field)
 			isRepeated := field.Label != nil && *field.Label == descriptorpb.FieldDescriptorProto_LABEL_REPEATED
+			isOneOf := field.OneofIndex != nil
 
 			checkDeprecated(outFile, field)
 			outFile.P(funcPrefix, funcName, "(v uint64) {")
-			if !isRepeated {
+			if !isRepeated && !isOneOf {
 				outFile.P("if v == 0 {")
 				outFile.P("return")
 				outFile.P("}")
@@ -155,10 +157,11 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 			fieldTag := fmt.Sprintf("0x%x", (*field.Number<<3)|2)
 			funcName := getSetterName(field)
 			isRepeated := field.Label != nil && *field.Label == descriptorpb.FieldDescriptorProto_LABEL_REPEATED
+			isOneOf := field.OneofIndex != nil
 
 			checkDeprecated(outFile, field)
 			outFile.P(funcPrefix, funcName, "(v string) {")
-			if !isRepeated {
+			if !isRepeated && !isOneOf {
 				outFile.P(`if v == "" {`)
 				outFile.P("return")
 				outFile.P("}")
@@ -193,12 +196,13 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 			fieldTag := fmt.Sprintf("0x%x", (*field.Number<<3)|2)
 			funcName := getSetterName(field)
 			isRepeated := field.Label != nil && *field.Label == descriptorpb.FieldDescriptorProto_LABEL_REPEATED
+			isOneOf := field.OneofIndex != nil
 
 			checkDeprecated(outFile, field)
 			outFile.P(funcPrefix, funcName, "(cb func(b *bytes.Buffer)) {")
 			outFile.P("x.buf.Reset()")
 			outFile.P("cb(&x.buf)")
-			if !isRepeated {
+			if !isRepeated && !isOneOf {
 				outFile.P("if x.buf.Len() == 0 {")
 				outFile.P("return")
 				outFile.P("}")
@@ -234,6 +238,7 @@ func handleVarintField(outFile *FileContext, builderTypeName string, field *desc
 	funcName := getSetterName(field)
 	funcPrefix := "func(x *" + builderTypeName + ") "
 	isRepeated := field.Label != nil && *field.Label == descriptorpb.FieldDescriptorProto_LABEL_REPEATED
+	isOneOf := field.OneofIndex != nil
 
 	var argType string
 	switch *field.Type {
@@ -249,7 +254,7 @@ func handleVarintField(outFile *FileContext, builderTypeName string, field *desc
 
 	checkDeprecated(outFile, field)
 	outFile.P(funcPrefix, funcName, "(v ", argType, " ) {")
-	if !isRepeated {
+	if !isRepeated && !isOneOf {
 		outFile.P("if v == 0 {")
 		outFile.P("return")
 		outFile.P("}")
@@ -299,10 +304,11 @@ func handleFixed64(outFile *FileContext, builderTypeName string, field *descript
 	funcName := getSetterName(field)
 	funcPrefix := "func(x *" + builderTypeName + ") "
 	isRepeated := field.Label != nil && *field.Label == descriptorpb.FieldDescriptorProto_LABEL_REPEATED
+	isOneOf := field.OneofIndex != nil
 
 	checkDeprecated(outFile, field)
 	outFile.P(funcPrefix, funcName, "(v ", argType, " ) {")
-	if !isRepeated {
+	if !isRepeated && !isOneOf {
 		outFile.P("if v == 0 {")
 		outFile.P("return")
 		outFile.P("}")
@@ -318,6 +324,7 @@ func handleSigned(outFile *FileContext, builderTypeName string, field *descripto
 	funcName := getSetterName(field)
 	funcPrefix := "func(x *" + builderTypeName + ") "
 	isRepeated := field.Label != nil && *field.Label == descriptorpb.FieldDescriptorProto_LABEL_REPEATED
+	isOneOf := field.OneofIndex != nil
 
 	outFile.SymAppendVarint()
 
@@ -333,7 +340,7 @@ func handleSigned(outFile *FileContext, builderTypeName string, field *descripto
 
 	checkDeprecated(outFile, field)
 	outFile.P(funcPrefix, funcName, "(v ", argType, " ) {")
-	if !isRepeated {
+	if !isRepeated && !isOneOf {
 		outFile.P("if v == 0 {")
 		outFile.P("return")
 		outFile.P("}")
